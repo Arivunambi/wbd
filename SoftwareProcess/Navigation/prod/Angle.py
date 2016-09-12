@@ -12,7 +12,6 @@ class Angle():
             return round(self.angle,1)
         else:
             raise ValueError("Angle.setDegrees:  Value should be an integer or float")  
-        pass
     
     def setDegreesAndMinutes(self, angleString):
         """Sets the value of the instance based on a string that contains degrees and minutes."""
@@ -42,11 +41,11 @@ class Angle():
         if angle:
             if isinstance(angle,Angle):
                 addintionalAngle = angle.getDegrees()
-                if addintionalAngle:
+                if addintionalAngle is not None:
                     self.angle = self.checkModulo(self.angle + addintionalAngle)
                     return round(self.angle,1)
                 else:
-                    pass
+                    raise ValueError("Angle.add:  Value cannot be none")
             else:
                 raise ValueError("Angle.add:  Value should be an instance of Angle")
         else:
@@ -58,11 +57,11 @@ class Angle():
         if angle:
             if isinstance(angle,Angle):
                 addintionalAngle = angle.getDegrees()
-                if addintionalAngle:
+                if addintionalAngle is not None:
                     self.angle = self.checkModulo(self.angle - addintionalAngle)
                     return round(self.angle,1)
                 else:
-                    pass
+                    raise ValueError("Angle.subtract:  Value cannot be none")
             else:
                 raise ValueError("Angle.subtract:  Value should be an instance of Angle")
         else:
@@ -74,7 +73,7 @@ class Angle():
         if angle:
             if isinstance(angle,Angle):
                 addintionalAngle = angle.getDegrees()
-                if addintionalAngle:
+                if addintionalAngle is not None:
                     if self.angle < addintionalAngle:
                         return -1
                     elif self.angle == addintionalAngle:
@@ -82,7 +81,7 @@ class Angle():
                     elif self.angle > addintionalAngle:
                         return 1
                 else:
-                    pass
+                    raise ValueError("Angle.compare:  Value cannot be none")
             else:
                 raise ValueError("Angle.compare:  Value should be an instance of Angle")
         else:
@@ -114,8 +113,8 @@ if __name__ == "__main__":
     b = Angle()
     c = Angle()
     print a.setDegrees(50.5)
-    print b.setDegrees(25.5)
-    print c.setDegrees(35.5)
+    print b.setDegrees(1225.5)
+    print c.setDegrees(-365.5)
     
     print a.setDegreesAndMinutes("0d0.1")
     print a.setDegreesAndMinutes("700d61.1")
@@ -130,5 +129,4 @@ if __name__ == "__main__":
     print a.getDegrees()
     
     print a.getString()
-
 
