@@ -230,7 +230,7 @@ class TCurveTest(unittest.TestCase):
         myT = T.TCurve(self.nominalN)
         self.assertAlmostEquals(myT.f(1, 5), 0.578703704)
         
-# 500 p
+# 500 integrate
 #    Desired level of confidence:    boundary value analysis
 #    Input-output Analysis
 #        inputs:      t ->    float > 0.0, mandatory, unvalidated
@@ -247,17 +247,7 @@ class TCurveTest(unittest.TestCase):
 #                value 3          f = lambda u,n: u**6
 #                value 4          f = lambda u,n: u**100
 #        output:
-#                The output is an integrated value of f from interval 0 to t simpson rule:
-#                    nominal t, f
-#                    nominal t, f
-#                    low n, low t, f
-#                    low n, low t, f
-#                    high n, low t, f
-#                    high n, low t, f
-#                    low n, high t, f
-#                    low n, high t, f
-#                    high n, high t, f
-#                    high n, high t, f
+#                The output is an integrated value of f from interval 0 to t simpson rule
 #    Sad path analysis:
 #        t:      out-of-bounds n  t<0.0
 #                non-numeric t    t="abc"
