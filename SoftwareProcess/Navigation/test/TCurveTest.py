@@ -230,3 +230,141 @@ class TCurveTest(unittest.TestCase):
         myT = T.TCurve(self.nominalN)
         self.assertAlmostEquals(myT.f(1, 5), 0.578703704)
         
+# 500 p
+#    Desired level of confidence:    boundary value analysis
+#    Input-output Analysis
+#        inputs:      t ->    float > 0.0, mandatory, unvalidated
+#                     n ->    numeric  mandatory validated
+#                     f ->    method returns value to be integrated mandatory unvalidated 
+#        outputs:    float .GT. 0 .LE. 1.0
+#    Happy path analysis:    
+#        t:      nominal value    t=1
+#                low bound        t=0.0
+#        n:      value 1          n = 1
+#                value 2          n = 2
+#        f:      value 1          f = lambda u,n: u
+#                value 2          f = lambda u,n: u**2
+#                value 3          f = lambda u,n: u**6
+#                value 4          f = lambda u,n: u**100
+#        output:
+#                The output is an integrated value of f from interval 0 to t simpson rule:
+#                    nominal t, f
+#                    nominal t, f
+#                    low n, low t, f
+#                    low n, low t, f
+#                    high n, low t, f
+#                    high n, low t, f
+#                    low n, high t, f
+#                    low n, high t, f
+#                    high n, high t, f
+#                    high n, high t, f
+#    Sad path analysis:
+#        t:      out-of-bounds n  t<0.0
+#                non-numeric t    t="abc"
+#        f:      invalid f        f = lambda u: u**2
+#
+#Happy path        
+    def test500_100ShouldReturnDefaultZero(self):
+        myT = T.TCurve(self.nominalN)
+        f = lambda u, n: u**2                       
+        self.assertEquals(myT.integrate(0, self.nominalN, f),0.0)
+    
+    def test500_110ShouldReturnSimsonValueFloatInput(self):
+        myT = T.TCurve(self.nominalN)
+        f = lambda u, n: u**2    
+        self.assertAlmostEquals(myT.integrate(1.5, 1, f), 1.125, 2)
+    
+    def test500_120ShouldReturnSimsonValueForMethod1(self):
+        myT = T.TCurve(self.nominalN)
+        f = lambda u, n: u                       
+        self.assertAlmostEquals(myT.integrate(1, self.nominalN, f),0.5, 1)
+        self.assertAlmostEquals(myT.integrate(2, self.nominalN, f), 2.0, 0)
+        self.assertAlmostEquals(myT.integrate(3, self.nominalN, f), 4.5, 0)
+        self.assertAlmostEquals(myT.integrate(16, self.nominalN, f), 128.0, 0)
+        
+    def test500_130ShouldReturnSimsonValueForMethod2(self):
+        myT = T.TCurve(self.nominalN)
+        f = lambda u, n: u**2    
+        self.assertAlmostEquals(myT.integrate(1, 1, f), 0.33, 1)
+        self.assertAlmostEquals(myT.integrate(2, 1, f), 2.67, 0)
+        self.assertAlmostEquals(myT.integrate(3, 1, f), 9.0, 0)
+    
+    def test500_140ShouldReturnSimsonValueForMethod3(self):
+        myT = T.TCurve(self.nominalN)
+        f = lambda u, n: u**6    
+        self.assertAlmostEquals(myT.integrate(1, 1, f), 0.1428, 2)
+        self.assertAlmostEquals(myT.integrate(2, 1, f), 18.286, 0)
+        self.assertAlmostEquals(myT.integrate(3, 1, f), 312.429, 0)
+    
+    def test500_150ShouldReturnSimsonValueForMethod4(self):
+        myT = T.TCurve(self.nominalN)
+        f = lambda u, n: 1 + (u**2)   
+        self.assertAlmostEquals(myT.integrate(1, 1, f), 1.33, 2)
+        self.assertAlmostEquals(myT.integrate(2, 1, f), 4.666, 2)
+        self.assertAlmostEquals(myT.integrate(3, 1, f), 12.0, 0)
+
+    def test500_160ShouldReturnSimsonValueForMethod5(self):
+        myT = T.TCurve(self.nominalN)
+        f = lambda u, n: 1 + (u**2)/n   
+        self.assertAlmostEquals(myT.integrate(1, self.nominalN, f), 1.0833, 2)
+        self.assertAlmostEquals(myT.integrate(2, self.nominalN, f), 2.666, 2)
+        self.assertAlmostEquals(myT.integrate(3, self.nominalN, f), 5.25, 2)
+    
+    def test500_170ShouldReturnSimsonValueForMethod6(self):
+        myT = T.TCurve(self.nominalN)
+        f = lambda u, n: (1 + (u**2)/n)**(-(n+1)/2)   
+        self.assertAlmostEquals(myT.integrate(1, 1, f), 0.78539816, 2)
+        self.assertAlmostEquals(myT.integrate(2, 1, f), 1.10714872, 2)
+        self.assertAlmostEquals(myT.integrate(3, 1, f), 1.24904577, 2)   
+             
+# Sad path
+    def test500_910ShouldRaiseExceptionOnNoneBoundary(self):
+        expectedString = "TCurve.integrate:"
+        myT = T.TCurve(self.nominalN)
+        with self.assertRaises(ValueError) as context:
+            myT.integrate(None, self.nominalN, myT.f)                       
+        self.assertEquals(expectedString, context.exception.args[0][0:len(expectedString)])
+
+    def test500_920ShouldRaiseExceptionOnInvalidBoundaryType(self):
+        expectedString = "TCurve.integrate:"
+        myT = T.TCurve(self.nominalN)
+        with self.assertRaises(ValueError) as context:
+            myT.integrate("", self.nominalN, myT.f)                       
+        self.assertEquals(expectedString, context.exception.args[0][0:len(expectedString)])
+
+    def test500_930ShouldRaiseExceptionOnInvalidBoundaryValue(self):
+        expectedString = "TCurve.integrate:"
+        myT = T.TCurve(self.nominalN)
+        with self.assertRaises(ValueError) as context:
+            myT.integrate(-1.0, self.nominalN, myT.f)                       
+        self.assertEquals(expectedString, context.exception.args[0][0:len(expectedString)])
+    
+    def test500_940ShouldRaiseExceptionOnNoneTypeMethod(self):
+        expectedString = "TCurve.integrate:"
+        myT = T.TCurve(self.nominalN)
+        with self.assertRaises(ValueError) as context:
+            myT.integrate(1, self.nominalN, None)                       
+        self.assertEquals(expectedString, context.exception.args[0][0:len(expectedString)])
+
+    def test500_950ShouldRaiseExceptionOnNonCallableMethod(self):
+        expectedString = "TCurve.integrate:"
+        myT = T.TCurve(self.nominalN)
+        with self.assertRaises(ValueError) as context:
+            myT.integrate(1, self.nominalN, 1)                       
+        self.assertEquals(expectedString, context.exception.args[0][0:len(expectedString)])
+
+    def test500_960ShouldRaiseExceptionOnLessNumberOfMethodArg(self):
+        expectedString = "TCurve.integrate:"
+        myT = T.TCurve(self.nominalN)
+        f = lambda u: u**2
+        with self.assertRaises(ValueError) as context:
+            myT.integrate(1.0, self.nominalN, f)                       
+        self.assertEquals(expectedString, context.exception.args[0][0:len(expectedString)])
+    
+    def test500_970ShouldRaiseExceptionOnMoreNumberOfMethodArg(self):
+        expectedString = "TCurve.integrate:"
+        myT = T.TCurve(self.nominalN)
+        f = lambda u, n, s: u**2
+        with self.assertRaises(ValueError) as context:
+            myT.integrate(1.0, self.nominalN, f)                       
+        self.assertEquals(expectedString, context.exception.args[0][0:len(expectedString)])
