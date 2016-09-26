@@ -238,7 +238,7 @@ class TCurveTest(unittest.TestCase):
 #                     f ->    method returns value to be integrated mandatory unvalidated 
 #        outputs:    float .GT. 0 .LE. 1.0
 #    Happy path analysis:    
-#        t:      nominal value    t=1
+#        t:      nominal value    t=1.0
 #                low bound        t=0.0
 #        n:      value 1          n = 1
 #                value 2          n = 2
