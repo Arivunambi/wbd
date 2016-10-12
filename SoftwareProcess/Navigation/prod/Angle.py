@@ -9,11 +9,11 @@ class Angle():
         
         if (isinstance(degrees,int) or isinstance(degrees,float)):
             self.angle = self.checkModulo(degrees)
-            return round(self.angle,1)
+            return self.angle#round(self.angle,1)
         else:
             raise ValueError("Angle.setDegrees:  Value should be an integer or float")  
     
-    def setDegreesAndMinutes(self, angleString):
+    def setDegreesAndMinutes(self, angleString=None):
         """Sets the value of the instance based on a string that contains degrees and minutes."""
         
         if angleString:
@@ -25,7 +25,7 @@ class Angle():
                         deg = float(matchResult.group(1))    #group before character 'd'
                         minutes = float(matchResult.group(2))    ##group after character 'd'
                         self.angle = self.checkModulo(deg) + (minutes/60.0)
-                        return round(self.angle,1)
+                        return self.angle#round(self.angle,1)
                     except:
                         raise ValueError("Angle.setDegreesAndMinutes:  Value should be in xdy.y format")
                 else:
@@ -35,7 +35,7 @@ class Angle():
         else:
             raise ValueError("Angle.setDegreesAndMinutes:  Value cannot be empty")               
     
-    def add(self, angle):
+    def add(self, angle=None):
         """Adds the value of the parameterized value from the instance."""
         
         if angle:
@@ -51,7 +51,7 @@ class Angle():
         else:
             raise ValueError("Angle.add:  Value cannot be empty") 
     
-    def subtract(self, angle):
+    def subtract(self, angle=None):
         """Subtracts the value of the parameterized value from the current instance."""
         
         if angle:
@@ -67,7 +67,7 @@ class Angle():
         else:
             raise ValueError("Angle.subtract:  Value cannot be empty") 
     
-    def compare(self, angle):
+    def compare(self, angle=None):
         """Compares parameterized value to the current instance."""
         
         if angle:
@@ -98,7 +98,7 @@ class Angle():
     def getDegrees(self):
         """Returns the angle as degrees"""
         
-        return round(self.angle,1)
+        return self.angle#round(self.angle,1)
     
     def checkModulo(self, angle):
         """Returns 360 modulo of given angle"""
