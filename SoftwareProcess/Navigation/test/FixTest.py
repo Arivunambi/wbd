@@ -1,6 +1,7 @@
+import os
 import unittest
-import Navigation.prod.Fix as Fix    
-#import Navigation.sandbox.Fix as Fix
+#import Navigation.prod.Fix as Fix    
+import Navigation.sandbox.Fix as Fix
     
 # ---------- constructor ----------    
 #theFix = Fix.Fix()    
@@ -31,7 +32,7 @@ class FixTest(unittest.TestCase):
 #    Happy path
     def test200_010_ShouldAcceptXML(self):
         theFix = Fix.Fix('log.txt')
-        self.assertEquals(theFix.setSightingFile("sightingFile.xml"), "sightingFile.xml")    
+        self.assertEquals(theFix.setSightingFile("sightingFile.xml"), os.path.join(os.getcwd(),"sightingFile.xml"))    
     
 #    Sad path
     def test200_910_ShouldRaiseValueErrorNoSightingFileParam(self):
@@ -88,7 +89,7 @@ class FixTest(unittest.TestCase):
         theFix.setSightingFile("sightingFile18.xml")
         self.assertEquals(theFix.getSightings(), ("0d0.0","0d0.0"))   
         
-    def test300_015_ShouldLogProperAdjustedAltiyude(self):
+    def test300_015_ShouldLogProperAdjustedAltitude(self):
         theFix = Fix.Fix('log2.txt')
         theFix.setSightingFile("sightingFile19.xml")
         self.assertEquals(theFix.getSightings(), ("0d0.0","0d0.0")) 

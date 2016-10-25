@@ -1,3 +1,4 @@
+import os
 import logging
 import time
 import re
@@ -27,7 +28,9 @@ class Fix():
                 self.logger.setLevel(logging.DEBUG)
                 if not self.logger.handlers:
                     self.logger.addHandler(fileHandle)
-                self.log("Start of log")
+                self.current_path = os.getcwd()
+                self.abs_path_logFile = fileHandle.baseFilename   
+                self.log("Log file:\t%s"%self.abs_path_logFile)
             except:
                 raise ValueError("Fix.__init__:  Cannot create the log")
         else:
@@ -48,9 +51,9 @@ class Fix():
                     try:
                         self.sightingXML = ElementTree()
                         self.sightingXML.parse(sightingFile)
-                        self.log("Start of sighting file %s" % sightingFile)
-                        self.sightingFile = sightingFile
-                        return sightingFile
+                        self.sightingFile = os.path.join(self.current_path, sightingFile)
+                        self.log("Sighting file:\t%s" % self.sightingFile)
+                        return self.sightingFile
                     except:
                         raise ValueError("Fix.setSightingFile:  File cannot be opened")
                 else:
