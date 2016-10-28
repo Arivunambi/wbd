@@ -63,13 +63,146 @@ class Fix():
         else:
             raise ValueError("Fix.setSightingFile:  Value cannot be empty")
         
+    def setAriesFile(self,ariesFile=""):
+        if ariesFile:
+            if isinstance(ariesFile,str):
+                ariesFilePattern = re.compile(r'^\w+.txt$')    #compiling for f.xml pattern
+                matchResult = re.match(ariesFilePattern,ariesFile)    #checks with given string
+                if matchResult:
+                    try:
+                        self.ariesTxt = []
+                        with open(ariesFile,'r') as aT:
+                            self.ariesTxt = aT.readlines()
+                        self.ariesFile = os.path.join(self.current_path, ariesFile)
+                        self.log("Aries file:\t%s" % self.ariesFile)
+                        return self.ariesFile
+                    except:
+                        raise ValueError("Fix.setAriesFile:  File cannot be opened")
+                else:
+                    raise ValueError("Fix.setAriesFile:  File name should be of the format f.txt")
+            else:
+                raise ValueError("Fix.setAriesFile:  File name should be an string of format f.txt")
+        else:
+            raise ValueError("Fix.setAriesFile:  Value cannot be empty")
+        
+    def setStarFile(self,starFile=""):
+        if starFile:
+            if isinstance(starFile,str):
+                starFilePattern = re.compile(r'^\w+.txt$')    #compiling for f.xml pattern
+                matchResult = re.match(starFilePattern,starFile)    #checks with given string
+                if matchResult:
+                    try:
+                        self.starTxt = []
+                        with open(starFile,'r') as sT:
+                            self.starTxt = sT.readlines()
+                        self.starFile = os.path.join(self.current_path, starFile)
+                        self.log("Star file:\t%s" % self.starFile)
+                        return self.starFile
+                    except:
+                        raise ValueError("Fix.setStarFile:  File cannot be opened")
+                else:
+                    raise ValueError("Fix.setStarFile:  File name should be of the format f.txt")
+            else:
+                raise ValueError("Fix.setStarFile:  File name should be an string of format f.txt")
+        else:
+            raise ValueError("Fix.setStarFile:  Value cannot be empty")
+        
+        
+    def processAriesTxt(self,ariesTxt):
+        if isinstance(ariesTxt,list) and ariesTxt:
+            processedData = []
+            ariesPattern = re.compile(r'^(0[1-9]|1[0-2])/([0-9]{2})/([0-9]{2})\t(2[0-3]|1[0-9]|[0-9])\t(\d+)d(\d+\.\d)\n$')   #compiling for f.xml pattern
+            for data in ariesTxt:
+                matchResult = re.match(ariesPattern,data)    #checks with given string
+                if matchResult:
+                    try:
+                        if int(matchResult.group(1)) in (1,3,5,7,8,10,12):
+                            if not 1<=int(matchResult.group(2))<=31:
+                                raise ValueError("Fix.setAriesFile:  Invalid date")
+                        elif int(matchResult.group(1)) in (4,6,9,11):
+                            if not 1<=int(matchResult.group(2))<=30:
+                                raise ValueError("Fix.setAriesFile:  Invalid date")
+                        elif int(matchResult.group(1))==2:
+                            if int(matchResult.group(3))%4==0 and not 1<=matchResult.group(2)<=29:
+                                raise ValueError("Fix.setAriesFile:  Invalid date")
+                            elif int(matchResult.group(3))%4!=0 and not 1<=matchResult.group(2)<=28:
+                                raise ValueError("Fix.setAriesFile:  Invalid date")
+                        else:
+                            raise ValueError("Fix.setAriesFile:  Invalid date")
+                        
+                        if not 0<=int(matchResult.group(5))<360:
+                            raise ValueError("Fix.setAriesFile:  Invalid degree")
+                        if not 0.0<=float(matchResult.group(6))<60.0:
+                            raise ValueError("Fix.setAriesFile:  Invalid minute")
+                    except:
+                        raise ValueError("Fix.setAriesFile:  Invalid aries data")
+                else:
+                    raise ValueError("Fix.setAriesFile:  Invalid aries data")
+        else:
+            raise ValueError("Fix.setAriesFile:  Invalid file content")
+        
+    def processStarTxt(self,starTxt):
+        if isinstance(starTxt,list) and starTxt:
+            processedData = []
+            starPattern = re.compile(r'^(.+)\t(0[1-9]|1[0-2])/([0-9]{2})/([0-9]{2})\t(\d+)d(\d+\.\d)\t(\-?\d+)d(\d+\.\d)\n$')   #compiling for f.xml pattern
+            for data in starTxt:
+                matchResult = re.match(starPattern,data)    #checks with given string
+                if matchResult:
+                    try:
+                        day = int(matchResult.group(2))
+                        month = int(matchResult.group(1))
+                        year = int(matchResult.group(3))
+                        if not self.isValidateDate(day, month, year):
+                            raise ValueError("Fix.setStarFile:  Invalid date")
+                        
+                        if not 0<=int(matchResult.group(5))<360:
+                            raise ValueError("Fix.setStarFile:  Invalid longitude degree")
+                        if not 0.0<=float(matchResult.group(6))<60.0:
+                            raise ValueError("Fix.setStarFile:  Invalid longitude minute")
+                        if not -90<int(matchResult.group(7))<90:
+                            raise ValueError("Fix.setStarFile:  Invalid latitude degree")
+                        if not 0.0<=float(matchResult.group(8))<60.0:
+                            raise ValueError("Fix.setStarFile:  Invalid latitude minute")
+                    except:
+                        raise ValueError("Fix.setStarFile:  Invalid star data")
+                else:
+                    raise ValueError("Fix.setStarFile:  Invalid star data")
+        else:
+            raise ValueError("Fix.setStarFile:  Invalid file content")
+        
+    def isValidateDate(self,day,month,year):
+        if isinstance(day,int) and isinstance(month,int) and isinstance(year,int):
+            try:
+                if month in (1,3,5,7,8,10,12):
+                    if not 1<=day<=31:
+                        return False
+                elif month in (4,6,9,11):
+                    if not 1<=day<=30:
+                        return False
+                elif month==2:
+                    if year%4==0 and not 1<=day<=29:
+                        return False
+                    elif year%4!=0 and not 1<=day<=28:
+                        return False
+                else:
+                    return False
+            except:
+                return False
+        else:
+            return False
+
+        
     def getSightings(self):
-        if hasattr(self, "sightingFile"):
+        if hasattr(self, "sightingFile") and hasattr(self, "ariesFile") and hasattr(self, "starFile"):
+            self.sightingsCount=0
             self.processXML()
             latitude, longitude = self.getPosition()
             if hasattr(self, 'xmlDict'):
                 for sights in self.xmlDict['fix']:
-                    self.log("%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude']))
+                    gp_latitude,gp_longitude=["",""]
+                    self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
+                
+                self.log("Sighting errors:\t%s"%self.sightingsCount-len(self.xmlDict['fix']))
             self.log("End of sighting file %s" % self.sightingFile)
             return (latitude, longitude)
         else:
@@ -86,6 +219,7 @@ class Fix():
             if root is not None and root.tag == 'fix':
                 self.xmlDict = {"fix":[]}
                 if root.findall('sighting'):
+                    self.sightingsCount = len(root.findall("sighting"))
                     self.sightings = Sightings(root)
                     for sighting in self.sightings.getSightingList():
                         sightDict = sighting.getSightingData()
@@ -114,7 +248,8 @@ class Fix():
                             self.xmlDict["fix"].insert(sights,sightDict)
                             break
                 if  len(self.xmlDict["fix"])==sights+1:
-                    self.xmlDict["fix"].append(sightDict)            
+                    self.xmlDict["fix"].append(sightDict)     
+                           
 
 class Sightings():        
     def __init__(self, root):
