@@ -66,6 +66,18 @@ class Angle():
                 raise ValueError("Angle.subtract:  Value should be an instance of Angle")
         else:
             raise ValueError("Angle.subtract:  Value cannot be empty") 
+        
+    def multiply(self, multiplier=None):
+        """multiply the value of the parameterized value from the instance."""
+        
+        if multiplier:
+            if isinstance(multiplier,float):
+                    self.angle = self.checkModulo(self.angle * multiplier)
+                    return round(self.angle,1)
+            else:
+                raise ValueError("Angle.multiply:  Value should be an instance of Angle")
+        else:
+            raise ValueError("Angle.multiply:  Value cannot be empty") 
     
     def compare(self, angle=None):
         """Compares parameterized value to the current instance."""
