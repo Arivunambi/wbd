@@ -103,7 +103,11 @@ class Angle():
         """Returns a string value of the angle."""
         
         deg = str(self.angle).split('.')[0]
-        minute = str(round((self.angle%1)*60,1))
+        minute = round((self.angle%1)*60,1)
+        if minute<10.0:
+            minute = '0'+str(minute)
+        else:
+            minute = str(minute)
         angleString = deg+'d'+minute
         return angleString
     

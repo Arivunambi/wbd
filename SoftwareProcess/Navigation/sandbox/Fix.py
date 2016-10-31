@@ -6,9 +6,9 @@ import math
 from datetime import tzinfo, timedelta, datetime
 from xml.dom.minidom import parse, parseString
 from xml.etree.ElementTree import Element, ElementTree
+import traceback
 
 import Angle
-import traceback
 #from Navigation.prod.Angle import Angle
 
 class TZ(tzinfo):
@@ -47,7 +47,9 @@ class Fix():
             logFile="log.txt"
         if isinstance(logFile, str) and len(logFile)>=1:
             try:
-                formatter = logging.Formatter(fmt='%(message)s')
+                self.abs_path_logFile = os.path.abspath(logFile)                   
+                self.log("Log file:\t%s"%self.abs_path_logFile)
+                """formatter = logging.Formatter(fmt='%(message)s')
                 fileHandle = logging.FileHandler(logFile)
                 fileHandle.setFormatter(formatter)
                 self.logger = logging.getLogger(logFile)
@@ -56,11 +58,11 @@ class Fix():
                 self.abs_path_logFile = fileHandle.baseFilename
                 if not self.logger.handlers:
                     self.logger.addHandler(fileHandle)
-                elif not os.path.isfile(self.abs_path_logFile) or os.access(self.abs_path_logFile, os.R_OK):
+                elif not os.path.isfile(self.abs_path_logFile) or not os.access(self.abs_path_logFile, os.R_OK):
                     self.logger.removeHandler(fileHandle)
                     self.logger.addHandler(fileHandle)
-                    
-                self.log("Log file:\t%s"%self.abs_path_logFile)
+                self.abs_path_logFile = os.path.abspath(logFile)                   
+                self.log("Log file:\t%s"%self.abs_path_logFile)"""
                 """self.current_path = os.getcwd()
                 mylog = Mylog(logFile)
                 self.abs_path_logFile = mylog.getLogPath()
@@ -73,10 +75,15 @@ class Fix():
 
     
     def log(self,message=""):
-        currTimeWithUTCOffset = datetime.now().replace(microsecond=0,tzinfo=TZ()).isoformat(' ')
+        with open(self.abs_path_logFile,"a+") as f:
+            currTimeWithUTCOffset = datetime.now().replace(microsecond=0,tzinfo=TZ()).isoformat(' ')
+            fixFormat = 'Log:\t%s:\t%s\n'
+            msg = fixFormat%(currTimeWithUTCOffset,message)
+            f.write(msg)
+        """currTimeWithUTCOffset = datetime.now().replace(microsecond=0,tzinfo=TZ()).isoformat(' ')
         fixFormat = 'Log:\t%s:\t%s'
         msg = fixFormat%(currTimeWithUTCOffset,message)
-        self.logger.debug(msg)
+        self.logger.debug(msg)"""
     
         
     def setSightingFile(self,sightingFile=""):
@@ -88,7 +95,7 @@ class Fix():
                     try:
                         self.sightingXML = ElementTree()
                         self.sightingXML.parse(sightingFile)
-                        self.sightingFile = os.path.join(self.current_path, sightingFile)
+                        self.sightingFile = os.path.abspath(sightingFile)#os.path.join(self.current_path, sightingFile)
                         self.log("Sighting file:\t%s" % self.sightingFile)
                         return self.sightingFile
                     except:
@@ -110,11 +117,13 @@ class Fix():
                         self.ariesTxt = []
                         with open(ariesFile,'r') as aT:
                             self.ariesTxt = aT.readlines()
-                        self.ariesFile = os.path.join(self.current_path, ariesFile)
-                        self.log("Aries file:\t%s" % self.ariesFile)                        
+                        self.ariesFile = os.path.abspath(ariesFile)#os.path.join(self.current_path, ariesFile)
+                        self.log("Aries file:\t%s" % self.ariesFile)  
+                        self.processAriesTxt(self.ariesTxt)                      
+                    except ValueError:
+                        pass
                     except:
                         raise ValueError("Fix.setAriesFile:  File cannot be opened")
-                    self.processAriesTxt(self.ariesTxt)
                     return self.ariesFile
                 else:
                     raise ValueError("Fix.setAriesFile:  File name should be of the format f.txt")
@@ -133,11 +142,13 @@ class Fix():
                         self.starTxt = []
                         with open(starFile,'r') as sT:
                             self.starTxt = sT.readlines()
-                        self.starFile = os.path.join(self.current_path, starFile)
+                        self.starFile = os.path.abspath(starFile)#os.path.join(self.current_path, starFile)
                         self.log("Star file:\t%s" % self.starFile)
+                        self.processStarTxt(self.starTxt)
+                    except ValueError:
+                        pass
                     except:
                         raise ValueError("Fix.setStarFile:  File cannot be opened")
-                    self.processStarTxt(self.starTxt)
                     return self.starFile
                 else:
                     raise ValueError("Fix.setStarFile:  File name should be of the format f.txt")
@@ -251,67 +262,73 @@ class Fix():
 
     def calculateAnguarDisplacement(self, observedBody, observationDate):
         locatedStar={}
-        if observedBody and observationDate and self.starData:
-            nearestLow={}
-            nearestHigh={}
-            exactMatch={}
-            observationDateObj = datetime.strptime(observationDate,"%Y-%m-%d")
-            for star in self.starData:
-                starDateObj = datetime.strptime(star["date"],"%m/%d/%y")
-                if star["body"]==observedBody:
-                    if starDateObj.date()==observationDateObj.date():
-                        exactMatch = star.copy()
-                        exactMatch["date"] = starDateObj
-                    elif starDateObj.date()<observationDateObj.date() and (not nearestLow or nearestLow["date"].date()<starDateObj.date()):
-                        nearestLow = star.copy()
-                        nearestLow["date"] = starDateObj
-                    elif starDateObj.date()>observationDateObj.date()and (not nearestHigh or nearestHigh["date"].date()>starDateObj.date()):
-                        nearestHigh = star.copy()
-                        nearestHigh["date"] = starDateObj
-            if exactMatch:
-                locatedStar = exactMatch.copy()
-            elif nearestLow:
-                locatedStar = nearestLow.copy()
-            elif nearestHigh:
-                locatedStar = nearestHigh.copy()
-            #print locatedStar
-            return locatedStar
+        try:
+            if observedBody and observationDate and self.starData:
+                nearestLow={}
+                nearestHigh={}
+                exactMatch={}
+                observationDateObj = datetime.strptime(observationDate,"%Y-%m-%d")
+                for star in self.starData:
+                    starDateObj = datetime.strptime(star["date"],"%m/%d/%y")
+                    if star["body"]==observedBody:
+                        if starDateObj.date()==observationDateObj.date():
+                            exactMatch = star.copy()
+                            exactMatch["date"] = starDateObj
+                        elif starDateObj.date()<observationDateObj.date() and (not nearestLow or nearestLow["date"].date()<starDateObj.date()):
+                            nearestLow = star.copy()
+                            nearestLow["date"] = starDateObj
+                        elif starDateObj.date()>observationDateObj.date()and (not nearestHigh or nearestHigh["date"].date()>starDateObj.date()):
+                            nearestHigh = star.copy()
+                            nearestHigh["date"] = starDateObj
+                if exactMatch:
+                    locatedStar = exactMatch.copy()
+                elif nearestLow:
+                    locatedStar = nearestLow.copy()
+                elif nearestHigh:
+                    locatedStar = nearestHigh.copy()
+                #print locatedStar
+        except:
+            pass#print traceback.format_exc()
+        return locatedStar
         
     def calculateGHA(self, observationDate, observedTime):
         locatedAries={}
-        if observedTime and observationDate and self.ariesData:
-            observedTime = observedTime.split(":")
-            observedHour = int(observedTime[0])
-            overTime =  int(observedTime[1])*60+int(observedTime[2])
-            aries1={}
-            aries2={}
-            observationDateObj = datetime.strptime(observationDate,"%Y-%m-%d")
-            for aries in self.ariesData:
-                ariesDateObj = datetime.strptime(aries["date"],"%m/%d/%y")            
-                if ariesDateObj.date()==observationDateObj.date() and int(aries["hour"])==observedHour:
-                    aries1 = aries.copy()
-                    aries1["date"] = ariesDateObj
-                elif ariesDateObj.date()==observationDateObj.date() and observedHour+1<24  and int(aries["hour"])==observedHour+1:
-                    aries2 = aries.copy()
-                    aries2["date"] = ariesDateObj
-                elif ariesDateObj.date()==observationDateObj.date()+timedelta(1) and observedHour+1>23 and int(aries["hour"])==(observedHour+1)%24:
-                    aries2 = aries.copy()
-                    aries2["date"] = ariesDateObj
-            if aries1 and aries2:
-                GHA_aries1 = Angle.Angle()
-                GHA_aries1.setDegreesAndMinutes(aries1["angle"])
-                GHA_aries2 = Angle.Angle()
-                GHA_aries2.setDegreesAndMinutes(aries2["angle"])
-                GHA_aries2.subtract(GHA_aries1)
-                modGHA_aries2 = math.fabs(GHA_aries2.getDegrees())
-                GHA_aries2.setDegrees(modGHA_aries2)
-                multiplier = overTime/3600.0
-                GHA_aries2.multiply(multiplier)
-                GHA_aries1.add(GHA_aries2) 
-                locatedAries = aries1.copy()
-                locatedAries["GHA_aries"] = GHA_aries1.getString()          
-            #print locatedAries["GHA_aries"]
-            return locatedAries
+        try:
+            if observedTime and observationDate and self.ariesData:
+                observedTime = observedTime.split(":")
+                observedHour = int(observedTime[0])
+                overTime =  int(observedTime[1])*60+int(observedTime[2])
+                aries1={}
+                aries2={}
+                observationDateObj = datetime.strptime(observationDate,"%Y-%m-%d")
+                for aries in self.ariesData:
+                    ariesDateObj = datetime.strptime(aries["date"],"%m/%d/%y")            
+                    if ariesDateObj.date()==observationDateObj.date() and int(aries["hour"])==observedHour:
+                        aries1 = aries.copy()
+                        aries1["date"] = ariesDateObj
+                    elif ariesDateObj.date()==observationDateObj.date() and observedHour+1<24  and int(aries["hour"])==observedHour+1:
+                        aries2 = aries.copy()
+                        aries2["date"] = ariesDateObj
+                    elif ariesDateObj.date()==observationDateObj.date()+timedelta(1) and observedHour+1>23 and int(aries["hour"])==(observedHour+1)%24:
+                        aries2 = aries.copy()
+                        aries2["date"] = ariesDateObj
+                if aries1 and aries2:
+                    GHA_aries1 = Angle.Angle()
+                    GHA_aries1.setDegreesAndMinutes(aries1["angle"])
+                    GHA_aries2 = Angle.Angle()
+                    GHA_aries2.setDegreesAndMinutes(aries2["angle"])
+                    GHA_aries2.subtract(GHA_aries1)
+                    modGHA_aries2 = math.fabs(GHA_aries2.getDegrees())
+                    GHA_aries2.setDegrees(modGHA_aries2)
+                    multiplier = overTime/3600.0
+                    GHA_aries2.multiply(multiplier)
+                    GHA_aries1.add(GHA_aries2) 
+                    locatedAries = aries1.copy()
+                    locatedAries["GHA_aries"] = GHA_aries1.getString()          
+                #print locatedAries["GHA_aries"]
+        except:
+            pass#print traceback.format_exc()
+        return locatedAries
         
     def calculateGPLongitude(self,GHA_aries,SHA_star):
         if GHA_aries and SHA_star:
@@ -343,8 +360,7 @@ class Fix():
                         self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
                     else:
                         #to be removed
-                        self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
-                
+                        pass##self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
                 self.log("Sighting errors:\t%s"%(self.sightingsCount-starValidCount))#-len(self.xmlDict['fix'])
             self.log("End of sighting file %s" % self.sightingFile)
             return (latitude, longitude)

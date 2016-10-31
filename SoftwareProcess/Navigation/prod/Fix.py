@@ -1,3 +1,4 @@
+import os
 import logging
 import time
 import re
@@ -5,6 +6,7 @@ import math
 from datetime import tzinfo, timedelta, datetime
 from xml.dom.minidom import parse, parseString
 from xml.etree.ElementTree import Element, ElementTree
+import traceback
 
 import Angle
 
@@ -16,28 +18,25 @@ class TZ(tzinfo):
 
 class Fix():
     def __init__(self,logFile="log.txt"):
-        if not logFile:
+        self.starData = []
+        self.ariesData = []
+        if logFile is None:
             logFile="log.txt"
-        if isinstance(logFile, str):
+        if isinstance(logFile, str) and len(logFile)>=1:
             try:
-                formatter = logging.Formatter(fmt='%(message)s')
-                fileHandle = logging.FileHandler(logFile)
-                fileHandle.setFormatter(formatter)
-                self.logger = logging.getLogger(logFile)
-                self.logger.setLevel(logging.DEBUG)
-                if not self.logger.handlers:
-                    self.logger.addHandler(fileHandle)
-                self.log("Start of log")
+                self.abs_path_logFile = os.path.abspath(logFile)                                     
+                self.log("Log file:\t%s"%self.abs_path_logFile)
             except:
                 raise ValueError("Fix.__init__:  Cannot create the log")
         else:
             raise ValueError("Fix.__init__:  Value should be an string")
 
     def log(self,message=""):
-        currTimeWithUTCOffset = datetime.now().replace(microsecond=0,tzinfo=TZ()).isoformat(' ')
-        fixFormat = 'Log:\t%s:\t%s'
-        msg = fixFormat%(currTimeWithUTCOffset,message)
-        self.logger.debug(msg)
+        with open(self.abs_path_logFile,"a+") as f:
+            currTimeWithUTCOffset = datetime.now().replace(microsecond=0,tzinfo=TZ()).isoformat(' ')
+            fixFormat = 'Log:\t%s:\t%s\n'
+            msg = fixFormat%(currTimeWithUTCOffset,message)
+            f.write(msg)
         
     def setSightingFile(self,sightingFile=""):
         if sightingFile:
@@ -48,9 +47,9 @@ class Fix():
                     try:
                         self.sightingXML = ElementTree()
                         self.sightingXML.parse(sightingFile)
-                        self.log("Start of sighting file %s" % sightingFile)
-                        self.sightingFile = sightingFile
-                        return sightingFile
+                        self.sightingFile = os.path.abspath(sightingFile)#os.path.join(self.current_path, sightingFile)
+                        self.log("Sighting file:\t%s" % self.sightingFile)
+                        return self.sightingFile
                     except:
                         raise ValueError("Fix.setSightingFile:  File cannot be opened")
                 else:
@@ -60,13 +59,262 @@ class Fix():
         else:
             raise ValueError("Fix.setSightingFile:  Value cannot be empty")
         
+    def setAriesFile(self,ariesFile=""):
+        if ariesFile:
+            if isinstance(ariesFile,str):
+                ariesFilePattern = re.compile(r'^\w+.txt$')    #compiling for f.xml pattern
+                matchResult = re.match(ariesFilePattern,ariesFile)    #checks with given string
+                if matchResult:
+                    try:
+                        self.ariesTxt = []
+                        with open(ariesFile,'r') as aT:
+                            self.ariesTxt = aT.readlines()
+                        self.ariesFile = os.path.abspath(ariesFile)#os.path.join(self.current_path, ariesFile)
+                        self.log("Aries file:\t%s" % self.ariesFile)  
+                        self.processAriesTxt(self.ariesTxt)                      
+                    except ValueError:
+                        pass
+                    except:
+                        raise ValueError("Fix.setAriesFile:  File cannot be opened")
+                    return self.ariesFile
+                else:
+                    raise ValueError("Fix.setAriesFile:  File name should be of the format f.txt")
+            else:
+                raise ValueError("Fix.setAriesFile:  File name should be an string of format f.txt")
+        else:
+            raise ValueError("Fix.setAriesFile:  Value cannot be empty")
+        
+    def setStarFile(self,starFile=""):
+        if starFile:
+            if isinstance(starFile,str):
+                starFilePattern = re.compile(r'^\w+.txt$')    #compiling for f.xml pattern
+                matchResult = re.match(starFilePattern,starFile)    #checks with given string
+                if matchResult:
+                    try:
+                        self.starTxt = []
+                        with open(starFile,'r') as sT:
+                            self.starTxt = sT.readlines()
+                        self.starFile = os.path.abspath(starFile)#os.path.join(self.current_path, starFile)
+                        self.log("Star file:\t%s" % self.starFile)
+                        self.processStarTxt(self.starTxt)
+                    except ValueError:
+                        pass
+                    except:
+                        raise ValueError("Fix.setStarFile:  File cannot be opened")
+                    return self.starFile
+                else:
+                    raise ValueError("Fix.setStarFile:  File name should be of the format f.txt")
+            else:
+                raise ValueError("Fix.setStarFile:  File name should be an string of format f.txt")
+        else:
+            raise ValueError("Fix.setStarFile:  Value cannot be empty")
+        
+        
+    def processAriesTxt(self,ariesTxt):
+        if isinstance(ariesTxt,list) and ariesTxt:
+            ariesPattern = re.compile(r'^(0[1-9]|1[0-2])/([0-9]{2})/([0-9]{2})\t(2[0-3]|1[0-9]|[0-9])\t(\d+)d(\d+\.\d)\n$')   #compiling for f.xml pattern
+            for data in ariesTxt:
+                processedData = {}
+                matchResult = re.match(ariesPattern,data)    #checks with given string
+                if matchResult:
+                    try:
+                        if int(matchResult.group(1)) in (1,3,5,7,8,10,12):
+                            if not 1<=int(matchResult.group(2))<=31:
+                                raise ValueError("Fix.setAriesFile:  Invalid date")
+                        elif int(matchResult.group(1)) in (4,6,9,11):
+                            if not 1<=int(matchResult.group(2))<=30:
+                                raise ValueError("Fix.setAriesFile:  Invalid date")
+                        elif int(matchResult.group(1))==2:
+                            if int(matchResult.group(3))%4==0 and not 1<=int(matchResult.group(2))<=29:
+                                raise ValueError("Fix.setAriesFile:  Invalid date")
+                            elif int(matchResult.group(3))%4!=0 and not 1<=int(matchResult.group(2))<=28:
+                                raise ValueError("Fix.setAriesFile:  Invalid date")
+                        else:
+                            raise ValueError("Fix.setAriesFile:  Invalid date")
+                        
+                        if not 0<=int(matchResult.group(5))<360:
+                            raise ValueError("Fix.setAriesFile:  Invalid degree")
+                        if not 0.0<=float(matchResult.group(6))<60.0:
+                            raise ValueError("Fix.setAriesFile:  Invalid minute")
+                        
+                        data = data.replace("\n","")
+                        aries = data.split("\t")
+                        processedData = {"date":aries[0], "hour":aries[1], "angle":aries[2]}
+                        self.ariesData.append(processedData)
+                    except ValueError:
+                        #print traceback.format_exc()
+                        #print "Invalid aries: "+data
+                        pass
+                    except:
+                        raise ValueError("Fix.setAriesFile:  Invalid aries data")
+                else:
+                    raise ValueError("Fix.setAriesFile:  Invalid aries data")
+        else:
+            raise ValueError("Fix.setAriesFile:  Invalid file content")
+        
+    def processStarTxt(self,starTxt):
+        if isinstance(starTxt,list) and starTxt:
+            processedData = {}
+            starPattern = re.compile(r'^(.+)\t(0[1-9]|1[0-2])/([0-9]{2})/([0-9]{2})\t(\d+)d(\d+\.\d)\t(\-?\d+)d(\d+\.\d)\n$')   #compiling for f.xml pattern
+            for data in starTxt:
+                matchResult = re.match(starPattern,data)    #checks with given string
+                if matchResult:
+                    try:
+                        day = int(matchResult.group(3))
+                        month = int(matchResult.group(2))
+                        year = int(matchResult.group(4))
+                        if not self.isValidateDate(day, month, year):
+                            raise ValueError("Fix.setStarFile:  Invalid date")
+                        
+                        if not 0<=int(matchResult.group(5))<360:
+                            raise ValueError("Fix.setStarFile:  Invalid longitude degree")
+                        if not 0.0<=float(matchResult.group(6))<60.0:
+                            raise ValueError("Fix.setStarFile:  Invalid longitude minute")
+                        if not -90<int(matchResult.group(7))<90:
+                            raise ValueError("Fix.setStarFile:  Invalid latitude degree")
+                        if not 0.0<=float(matchResult.group(8))<60.0:
+                            raise ValueError("Fix.setStarFile:  Invalid latitude minute")
+                        
+                        data = data.replace("\n","")
+                        star = data.split("\t")
+                        processedData = {"body":star[0], "date":star[1], "longitude":star[2], "latitude":star[3]}
+                        self.starData.append(processedData)
+                    except ValueError:
+                        #print traceback.format_exc()
+                        #print "Invalid star: "+data
+                        pass    
+                    except:
+                        raise ValueError("Fix.setStarFile:  Invalid star data")
+                else:
+                    raise ValueError("Fix.setStarFile:  Invalid star data")
+        else:
+            raise ValueError("Fix.setStarFile:  Invalid file content")
+        
+    def isValidateDate(self,day,month,year):
+        if isinstance(day,int) and isinstance(month,int) and isinstance(year,int):
+            try:
+                if month in (1,3,5,7,8,10,12):
+                    if not 1<=day<=31:
+                        return False
+                elif month in (4,6,9,11):
+                    if not 1<=day<=30:
+                        return False
+                elif month==2:
+                    if year%4==0 and not 1<=day<=29:
+                        return False
+                    elif year%4!=0 and not 1<=day<=28:
+                        return False
+                else:
+                    return False
+                return True
+            except:
+                return False
+        else:
+            return False
+
+    def calculateAnguarDisplacement(self, observedBody, observationDate):
+        locatedStar={}
+        try:
+            if observedBody and observationDate and self.starData:
+                nearestLow={}
+                nearestHigh={}
+                exactMatch={}
+                observationDateObj = datetime.strptime(observationDate,"%Y-%m-%d")
+                for star in self.starData:
+                    starDateObj = datetime.strptime(star["date"],"%m/%d/%y")
+                    if star["body"]==observedBody:
+                        if starDateObj.date()==observationDateObj.date():
+                            exactMatch = star.copy()
+                            exactMatch["date"] = starDateObj
+                        elif starDateObj.date()<observationDateObj.date() and (not nearestLow or nearestLow["date"].date()<starDateObj.date()):
+                            nearestLow = star.copy()
+                            nearestLow["date"] = starDateObj
+                        elif starDateObj.date()>observationDateObj.date()and (not nearestHigh or nearestHigh["date"].date()>starDateObj.date()):
+                            nearestHigh = star.copy()
+                            nearestHigh["date"] = starDateObj
+                if exactMatch:
+                    locatedStar = exactMatch.copy()
+                elif nearestLow:
+                    locatedStar = nearestLow.copy()
+                elif nearestHigh:
+                    locatedStar = nearestHigh.copy()
+                #print locatedStar
+        except:
+            pass#print traceback.format_exc()
+        return locatedStar
+        
+    def calculateGHA(self, observationDate, observedTime):
+        locatedAries={}
+        try:
+            if observedTime and observationDate and self.ariesData:
+                observedTime = observedTime.split(":")
+                observedHour = int(observedTime[0])
+                overTime =  int(observedTime[1])*60+int(observedTime[2])
+                aries1={}
+                aries2={}
+                observationDateObj = datetime.strptime(observationDate,"%Y-%m-%d")
+                for aries in self.ariesData:
+                    ariesDateObj = datetime.strptime(aries["date"],"%m/%d/%y")            
+                    if ariesDateObj.date()==observationDateObj.date() and int(aries["hour"])==observedHour:
+                        aries1 = aries.copy()
+                        aries1["date"] = ariesDateObj
+                    elif ariesDateObj.date()==observationDateObj.date() and observedHour+1<24  and int(aries["hour"])==observedHour+1:
+                        aries2 = aries.copy()
+                        aries2["date"] = ariesDateObj
+                    elif ariesDateObj.date()==observationDateObj.date()+timedelta(1) and observedHour+1>23 and int(aries["hour"])==(observedHour+1)%24:
+                        aries2 = aries.copy()
+                        aries2["date"] = ariesDateObj
+                if aries1 and aries2:
+                    GHA_aries1 = Angle.Angle()
+                    GHA_aries1.setDegreesAndMinutes(aries1["angle"])
+                    GHA_aries2 = Angle.Angle()
+                    GHA_aries2.setDegreesAndMinutes(aries2["angle"])
+                    GHA_aries2.subtract(GHA_aries1)
+                    modGHA_aries2 = math.fabs(GHA_aries2.getDegrees())
+                    GHA_aries2.setDegrees(modGHA_aries2)
+                    multiplier = overTime/3600.0
+                    GHA_aries2.multiply(multiplier)
+                    GHA_aries1.add(GHA_aries2) 
+                    locatedAries = aries1.copy()
+                    locatedAries["GHA_aries"] = GHA_aries1.getString()          
+                #print locatedAries["GHA_aries"]
+        except:
+            pass#print traceback.format_exc()
+        return locatedAries
+        
+    def calculateGPLongitude(self,GHA_aries,SHA_star):
+        if GHA_aries and SHA_star:
+            gpLongitude = Angle.Angle()
+            gpLongitude.setDegreesAndMinutes(GHA_aries)
+            SHA_angle = Angle.Angle()
+            SHA_angle.setDegreesAndMinutes(SHA_star)
+            gpLongitude.add(SHA_angle)
+            return gpLongitude.getString()
+        
     def getSightings(self):
         if hasattr(self, "sightingFile"):
+            self.sightingsCount=0
+            starValidCount=0
             self.processXML()
             latitude, longitude = self.getPosition()
-            if hasattr(self, 'xmlDict'):
+            if hasattr(self, 'xmlDict') and hasattr(self, "ariesFile") and hasattr(self, "starFile"):
                 for sights in self.xmlDict['fix']:
-                    self.log("%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude']))
+                    gp_latitude,gp_longitude=["",""]
+                    locatedStar = self.calculateAnguarDisplacement(sights['body'],sights['date'])
+                    locatedAries = self.calculateGHA(sights['date'],sights['time'])
+                    if locatedStar and locatedAries:
+                        SHA_star = locatedStar["longitude"]
+                        GHA_aries = locatedAries["GHA_aries"]
+                        gp_latitude = locatedStar["latitude"]
+                        gp_longitude = self.calculateGPLongitude(GHA_aries,SHA_star)
+                        starValidCount+=1
+                        self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
+                    else:
+                        #to be removed
+                        pass##self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
+            elif hasattr(self, 'xmlDict') :
+                pass
+            self.log("Sighting errors:\t%s"%(self.sightingsCount-starValidCount))#-len(self.xmlDict['fix'])
             self.log("End of sighting file %s" % self.sightingFile)
             return (latitude, longitude)
         else:
@@ -83,6 +331,7 @@ class Fix():
             if root is not None and root.tag == 'fix':
                 self.xmlDict = {"fix":[]}
                 if root.findall('sighting'):
+                    self.sightingsCount = len(root.findall("sighting"))
                     self.sightings = Sightings(root)
                     for sighting in self.sightings.getSightingList():
                         sightDict = sighting.getSightingData()
@@ -152,20 +401,26 @@ class Sighting():
             self.timePattern = re.compile(r'^[0-2][0-9]:[0-5][0-9]:[0-5][0-9]$') 
             self.degminPattern = re.compile(r'(\-?\d+)d(\d+(\.\d)?)$')    
             self.numericPattern = re.compile(r'^\-?[0-9]+(.[0-9]+)?$')
-            self.integerPattern = re.compile(r'^\-?[0-9]+(.[0-9]+)?$')
+            self.integerPattern = re.compile(r'^\-?[0-9]+$')
             self.sightingData = {}
             if sightingData:
-                self.sightingData['body'] = self.setBody(sightingData.get('body'))
-                self.sightingData['date'] = self.setDate(sightingData.get('date'))
-                self.sightingData['time'] = self.setTime(sightingData.get('time'))
-                self.sightingData['observation'] = self.setObservation(sightingData.get('observation'))
-                self.sightingData['height'] = self.setHeight(sightingData.get('height'))
-                self.sightingData['temperature'] = self.setTemperature(sightingData.get('temperature'))
-                self.sightingData['pressure'] = self.setPressure(sightingData.get('pressure'))
-                self.sightingData['horizon'] = self.setHorizon(sightingData.get('horizon'))
+                self.sightingData['body'] = self.setBody(self.trim(sightingData.get('body')))
+                self.sightingData['date'] = self.setDate(self.trim(sightingData.get('date')))
+                self.sightingData['time'] = self.setTime(self.trim(sightingData.get('time')))
+                self.sightingData['observation'] = self.setObservation(self.trim(sightingData.get('observation')))
+                self.sightingData['height'] = self.setHeight(self.trim(sightingData.get('height')))
+                self.sightingData['temperature'] = self.setTemperature(self.trim(sightingData.get('temperature')))
+                self.sightingData['pressure'] = self.setPressure(self.trim(sightingData.get('pressure')))
+                self.sightingData['horizon'] = self.setHorizon(self.trim(sightingData.get('horizon')))
                 #self.calculateAltitude() #could be removed
             else:
                 pass  
+        
+    def trim(self,data):
+        if isinstance(data,str):
+            return data.strip(" ")
+        else:
+            return data
         
     def setBody(self,sightingData=None):
         tag = 'body'
