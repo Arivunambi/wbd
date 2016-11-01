@@ -365,6 +365,7 @@ class Fix():
                 elif hasattr(self, 'xmlDict') :
                     pass
                 self.log("Sighting errors:\t%s"%(self.sightingsCount-starValidCount))#-len(self.xmlDict['fix'])
+                self.log("End of sighting file %s" % self.sightingFile)
                 return (latitude, longitude)
             except ValueError, Err:
                 self.log("End of sighting file %s" % self.sightingFile)
