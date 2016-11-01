@@ -341,29 +341,34 @@ class Fix():
         
         
     def getSightings(self):
-        if hasattr(self, "sightingFile"):# and hasattr(self, "ariesFile") and hasattr(self, "starFile"):
-            self.sightingsCount=0
-            starValidCount=0
-            self.processXML()
-            latitude, longitude = self.getPosition()
-            if hasattr(self, 'xmlDict'):
-                for sights in self.xmlDict['fix']:
-                    gp_latitude,gp_longitude=["",""]
-                    locatedStar = self.calculateAnguarDisplacement(sights['body'],sights['date'])
-                    locatedAries = self.calculateGHA(sights['date'],sights['time'])
-                    if locatedStar and locatedAries:
-                        SHA_star = locatedStar["longitude"]
-                        GHA_aries = locatedAries["GHA_aries"]
-                        gp_latitude = locatedStar["latitude"]
-                        gp_longitude = self.calculateGPLongitude(GHA_aries,SHA_star)
-                        starValidCount+=1
-                        self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
-                    else:
-                        #to be removed
-                        pass##self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
+        if hasattr(self, "sightingFile"):
+            try:
+                self.sightingsCount=0
+                starValidCount=0
+                self.processXML()
+                latitude, longitude = self.getPosition()
+                if hasattr(self, 'xmlDict') and hasattr(self, "ariesFile") and hasattr(self, "starFile"):
+                    for sights in self.xmlDict['fix']:
+                        gp_latitude,gp_longitude=["",""]
+                        locatedStar = self.calculateAnguarDisplacement(sights['body'],sights['date'])
+                        locatedAries = self.calculateGHA(sights['date'],sights['time'])
+                        if locatedStar and locatedAries:
+                            SHA_star = locatedStar["longitude"]
+                            GHA_aries = locatedAries["GHA_aries"]
+                            gp_latitude = locatedStar["latitude"]
+                            gp_longitude = self.calculateGPLongitude(GHA_aries,SHA_star)
+                            starValidCount+=1
+                            self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
+                        else:
+                            #to be removed
+                            pass##self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
+                elif hasattr(self, 'xmlDict') :
+                    pass
                 self.log("Sighting errors:\t%s"%(self.sightingsCount-starValidCount))#-len(self.xmlDict['fix'])
-            self.log("End of sighting file %s" % self.sightingFile)
-            return (latitude, longitude)
+                return (latitude, longitude)
+            except ValueError, Err:
+                self.log("End of sighting file %s" % self.sightingFile)
+                raise ValueError("Fix.getSightings: Invalid sightingData")
         else:
             raise ValueError("Fix.getSightings:  sightingFile cannot be empty")
     
