@@ -315,12 +315,12 @@ class Fix():
                             pass##self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
                 elif hasattr(self, 'xmlDict') :
                     pass
-                self.log("Sighting errors:\t%s"%(self.sightingsCount-starValidCount))#-len(self.xmlDict['fix'])
+                #self.log("Sighting errors:\t%s"%(self.sightingsCount-starValidCount))#-len(self.xmlDict['fix'])
                 self.log("End of sighting file %s" % self.sightingFile)
                 return (latitude, longitude)
             except ValueError, Err:
                 self.log("End of sighting file %s" % self.sightingFile)
-                raise ValueError("Fix.getSightings: Invalid sightingData")
+                raise ValueError("Fix.getSightings:  Invalid sightingData")
         else:
             raise ValueError("Fix.getSightings:  sightingFile cannot be empty")
     
