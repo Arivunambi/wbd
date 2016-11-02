@@ -16,7 +16,7 @@ class TZ(tzinfo):
 
 class Fix():
     def __init__(self,logFile="log.txt"):
-        if not logFile:
+        if logFile is None:
             logFile="log.txt"
         if isinstance(logFile, str):
             try:
@@ -27,6 +27,7 @@ class Fix():
                 self.logger.setLevel(logging.DEBUG)
                 if not self.logger.handlers:
                     self.logger.addHandler(fileHandle)
+                self.logFile = logFile
                 self.log("Start of log")
             except:
                 raise ValueError("Fix.__init__:  Cannot create the log")
@@ -34,10 +35,11 @@ class Fix():
             raise ValueError("Fix.__init__:  Value should be an string")
 
     def log(self,message=""):
-        currTimeWithUTCOffset = datetime.now().replace(microsecond=0,tzinfo=TZ()).isoformat(' ')
-        fixFormat = 'Log:\t%s:\t%s'
-        msg = fixFormat%(currTimeWithUTCOffset,message)
-        self.logger.debug(msg)
+        with open(self.logFile,"a+") as f:
+            currTimeWithUTCOffset = datetime.now().replace(microsecond=0,tzinfo=TZ()).isoformat(' ')
+            fixFormat = 'Log:\t%s:\t%s\n'
+            msg = fixFormat%(currTimeWithUTCOffset,message)
+            f.write(msg)
         
     def setSightingFile(self,sightingFile=""):
         if sightingFile:
@@ -62,13 +64,17 @@ class Fix():
         
     def getSightings(self):
         if hasattr(self, "sightingFile"):
-            self.processXML()
-            latitude, longitude = self.getPosition()
-            if hasattr(self, 'xmlDict'):
-                for sights in self.xmlDict['fix']:
-                    self.log("%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude']))
-            self.log("End of sighting file %s" % self.sightingFile)
-            return (latitude, longitude)
+            try:
+                self.processXML()
+                latitude, longitude = self.getPosition()
+                if hasattr(self, 'xmlDict'):
+                    for sights in self.xmlDict['fix']:
+                        self.log("%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude']))
+                self.log("End of sighting file %s" % self.sightingFile)
+                return (latitude, longitude)
+            except ValueError, Err:
+                self.log("End of sighting file %s" % self.sightingFile)
+                raise ValueError("Fix.getSightings:  Invalid sightingData")
         else:
             raise ValueError("Fix.getSightings:  sightingFile cannot be empty")
     
@@ -152,20 +158,26 @@ class Sighting():
             self.timePattern = re.compile(r'^[0-2][0-9]:[0-5][0-9]:[0-5][0-9]$') 
             self.degminPattern = re.compile(r'(\-?\d+)d(\d+(\.\d)?)$')    
             self.numericPattern = re.compile(r'^\-?[0-9]+(.[0-9]+)?$')
-            self.integerPattern = re.compile(r'^\-?[0-9]+(.[0-9]+)?$')
+            self.integerPattern = re.compile(r'^\-?[0-9]+$')
             self.sightingData = {}
             if sightingData:
-                self.sightingData['body'] = self.setBody(sightingData.get('body'))
-                self.sightingData['date'] = self.setDate(sightingData.get('date'))
-                self.sightingData['time'] = self.setTime(sightingData.get('time'))
-                self.sightingData['observation'] = self.setObservation(sightingData.get('observation'))
-                self.sightingData['height'] = self.setHeight(sightingData.get('height'))
-                self.sightingData['temperature'] = self.setTemperature(sightingData.get('temperature'))
-                self.sightingData['pressure'] = self.setPressure(sightingData.get('pressure'))
-                self.sightingData['horizon'] = self.setHorizon(sightingData.get('horizon'))
+                self.sightingData['body'] = self.setBody(self.trim(sightingData.get('body')))
+                self.sightingData['date'] = self.setDate(self.trim(sightingData.get('date')))
+                self.sightingData['time'] = self.setTime(self.trim(sightingData.get('time')))
+                self.sightingData['observation'] = self.setObservation(self.trim(sightingData.get('observation')))
+                self.sightingData['height'] = self.setHeight(self.trim(sightingData.get('height')))
+                self.sightingData['temperature'] = self.setTemperature(self.trim(sightingData.get('temperature')))
+                self.sightingData['pressure'] = self.setPressure(self.trim(sightingData.get('pressure')))
+                self.sightingData['horizon'] = self.setHorizon(self.trim(sightingData.get('horizon')))
                 #self.calculateAltitude() #could be removed
             else:
                 pass  
+        
+    def trim(self,data):
+        if isinstance(data,str):
+            return data.strip(" ")
+        else:
+            return data
         
     def setBody(self,sightingData=None):
         tag = 'body'
