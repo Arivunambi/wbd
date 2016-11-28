@@ -70,7 +70,7 @@ class Angle():
     def multiply(self, multiplier=None):
         """multiply the value of the parameterized value from the instance."""
         
-        if multiplier:
+        if multiplier is not None:
             if isinstance(multiplier,float):
                     self.angle = self.checkModulo(self.angle * multiplier)
                     return round(self.angle,1)

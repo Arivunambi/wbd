@@ -9,6 +9,7 @@ from xml.etree.ElementTree import Element, ElementTree
 import traceback
 
 import Angle
+from Navigation.prod import Angle
 
 class TZ(tzinfo):
     def utcoffset(self, dt):
@@ -254,7 +255,7 @@ class Fix():
                 aries2={}
                 observationDateObj = datetime.strptime(observationDate,"%Y-%m-%d")
                 for aries in self.ariesData:
-                    ariesDateObj = datetime.strptime(aries["date"],"%m/%d/%y")            
+                    ariesDateObj = datetime.strptime(aries["date"],"%m/%d/%y")  
                     if ariesDateObj.date()==observationDateObj.date() and int(aries["hour"])==observedHour:
                         aries1 = aries.copy()
                         aries1["date"] = ariesDateObj
@@ -277,7 +278,7 @@ class Fix():
                     GHA_aries1.add(GHA_aries2) 
                     locatedAries = aries1.copy()
                     locatedAries["GHA_aries"] = GHA_aries1.getString()          
-                #print locatedAries["GHA_aries"]
+                #print "ghaa :",locatedAries
         except:
             pass#print traceback.format_exc()
         return locatedAries
@@ -291,35 +292,95 @@ class Fix():
             gpLongitude.add(SHA_angle)
             return gpLongitude.getString()
         
-    def getSightings(self):
+    def getSightings(self, assumedLatitude="0d0.0", assumedLongitude="0d0.0"):
+        latPattern = re.compile(r'^([NS]?)(\d+)d(\d+\.\d)$')
+        longPattern = re.compile(r'^(\d+)d(\d+\.\d)$')
+        if not assumedLatitude:
+            assumedLatitude = "0d0.0"
+        else:
+            assumedLatitude = self.trim(assumedLatitude)
+            matchResult = re.match(latPattern,assumedLatitude)    #checks with given string
+            if matchResult and matchResult.group(2) and matchResult.group(3):
+                self.direction = matchResult.group(1)
+                if matchResult.group(1) in ('N','S') and assumedLatitude not in ("N0d0.0","S0d0.0"):
+                    self.assumedLatitude = Angle.Angle()
+                    if 0<= int(matchResult.group(2)) <90 and 0<= float(matchResult.group(3)) <60.0:
+                        self.assumedLatitude.setDegreesAndMinutes(assumedLatitude[1:])
+                    else:
+                        raise ValueError("Fix.getSightings:  Invalid Lat or Long")
+                elif not matchResult.group(1) and assumedLatitude=="0d0.0":
+                    self.assumedLatitude.setDegreesAndMinutes(assumedLatitude)
+                else:
+                    raise ValueError("Fix.getSightings:  Invalid Lat or Long")
+            
+        if not assumedLongitude:
+            assumedLongitude = "0d0.0"
+        else:
+            assumedLongitude = self.trim(assumedLongitude)            
+            matchResult = re.match(longPattern,assumedLongitude)    #checks with given string
+            if matchResult:
+                if matchResult.group(1) and matchResult.group(2):
+                    self.assumedLongitude = Angle.Angle()
+                    if 0<= int(matchResult.group(1)) <360 and 0<= float(matchResult.group(2)) <60.0:
+                        self.assumedLongitude.setDegreesAndMinutes(assumedLongitude[1:])
+                    else:
+                        raise ValueError("Fix.getSightings:  Invalid Lat or Long")
+                else:
+                    raise ValueError("Fix.getSightings:  Invalid Lat or Long")
+        
         if hasattr(self, "sightingFile"):
             try:
                 self.sightingsCount=0
                 starValidCount=0
                 self.processXML()
                 latitude, longitude = self.getPosition()
+                approximateLatitude_angle = Angle.Angle()
+                approximateLongitude_angle = Angle.Angle()
+                approximateLatitude = self.assumedLatitude.getDegrees()
+                approximateLongitude = self.assumedLongitude.getDegrees()
                 if hasattr(self, 'xmlDict') and hasattr(self, "ariesFile") and hasattr(self, "starFile"):
+                    #print "Aries file :", self.ariesFile
                     for sights in self.xmlDict['fix']:
                         gp_latitude,gp_longitude=["",""]
                         locatedStar = self.calculateAnguarDisplacement(sights['body'],sights['date'])
                         locatedAries = self.calculateGHA(sights['date'],sights['time'])
+                        #print "sight: ",sights
+                        #print "located star and aries: ",locatedStar," and ",locatedAries
                         if locatedStar and locatedAries:
                             SHA_star = locatedStar["longitude"]
                             GHA_aries = locatedAries["GHA_aries"]
                             gp_latitude = locatedStar["latitude"]
                             gp_longitude = self.calculateGPLongitude(GHA_aries,SHA_star)
+                            LHA,correctedAltitude,distanceAdjustment,azimuthAdjustment = self.calculateAdjustment(gp_latitude,gp_longitude,sights['adjustedAltitude'])
+                            approximateLatitude += (distanceAdjustment.getDegrees() * math.cos(azimuthAdjustment.getDegrees()))
+                            
+                            approximateLongitude += (distanceAdjustment.getDegrees() * math.sin(azimuthAdjustment.getDegrees()))
+                            
                             starValidCount+=1
-                            self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
+                            self.log("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'],sights['date'],sights['time'],sights['adjustedAltitude'], \
+                                                                               gp_latitude, gp_longitude,assumedLatitude,assumedLongitude, \
+                                                                               azimuthAdjustment.getString(),int(round(distanceAdjustment.getDegrees()*60))))
                         else:
                             #to be removed
                             pass##self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
+                    
+                    approximateLatitude = approximateLatitude/60.0
+                    approximateLatitude_angle.setDegrees(approximateLatitude)
+                    
+                    approximateLongitude = approximateLongitude/60.0        
+                    approximateLongitude_angle = Angle.Angle()
+                    approximateLongitude_angle.setDegrees(approximateLongitude)
+                            
                 elif hasattr(self, 'xmlDict') :
-                    pass
-                #self.log("Sighting errors:\t%s"%(self.sightingsCount-starValidCount))#-len(self.xmlDict['fix'])
+                    raise ValueError("Fix.getSightings:  Data not set")
+                self.log("Sighting errors:\t%s"%(self.sightingsCount-starValidCount))#-len(self.xmlDict['fix'])
+                
+                self.log("Approximate latitude:\t%s\tApproximate longitude:\t%s"%(self.direction+approximateLatitude_angle.getString(),approximateLongitude_angle.getString()))
                 self.log("End of sighting file %s" % self.sightingFile)
-                return (latitude, longitude)
+                return (approximateLatitude_angle.getDegrees(), approximateLongitude_angle.getDegrees())
             except ValueError, Err:
                 self.log("End of sighting file %s" % self.sightingFile)
+                print traceback.format_exc()
                 raise ValueError("Fix.getSightings:  Invalid sightingData")
         else:
             raise ValueError("Fix.getSightings:  sightingFile cannot be empty")
@@ -336,10 +397,13 @@ class Fix():
                 self.xmlDict = {"fix":[]}
                 if root.findall('sighting'):
                     self.sightingsCount = len(root.findall("sighting"))
-                    self.sightings = Sightings(root)
-                    for sighting in self.sightings.getSightingList():
-                        sightDict = sighting.getSightingData()
-                        self.sortedXMLDict(sightDict)
+                    try:
+                        self.sightings = Sightings(root)
+                        for sighting in self.sightings.getSightingList():
+                            sightDict = sighting.getSightingData()
+                            self.sortedXMLDict(sightDict)
+                    except:
+                        pass
                 else:
                     pass #no sightings
             else:
@@ -364,7 +428,41 @@ class Fix():
                             self.xmlDict["fix"].insert(sights,sightDict)
                             break
                 if  len(self.xmlDict["fix"])==sights+1:
-                    self.xmlDict["fix"].append(sightDict)            
+                    self.xmlDict["fix"].append(sightDict)    
+                    
+    def trim(self,data):
+        if isinstance(data,str):
+            return data.strip(" ")
+        else:
+            return data
+    
+    def calculateAdjustment(self,gp_latitude,gp_longitude,adjustedAltitude):
+        LHA = Angle.Angle()
+        LHA.setDegreesAndMinutes(gp_longitude)
+        LHA.subtract(self.assumedLongitude)           
+        
+        gp_latitude_angle = Angle.Angle()
+        gp_latitude_angle.setDegreesAndMinutes(gp_latitude)
+        
+        correctedAltitude = math.asin(  ( math.sin(gp_latitude_angle.getDegrees()) * math.sin(self.assumedLatitude.getDegrees()) )  
+                            + ( math.cos(gp_latitude_angle.getDegrees()) * math.cos(self.assumedLatitude.getDegrees()) * math.cos(LHA.getDegrees()) )  )  
+                            
+        correctedAltitude_angle = Angle.Angle()
+        correctedAltitude_angle.setDegrees(correctedAltitude)
+                
+        #print adjustedAltitude, " ", correctedAltitude
+        distanceAdjustment = Angle.Angle()
+        distanceAdjustment.setDegreesAndMinutes(adjustedAltitude)
+        distanceAdjustment.subtract(correctedAltitude_angle)                                   
+        #distanceAdjustment = adjustedAltitude.getDegrees() - correctedAltitude
+        
+        azimuthAdjustment  = math.acos(  ( math.sin(gp_latitude_angle.getDegrees()) - math.sin(self.assumedLatitude.getDegrees()) 
+                                          * math.sin(distanceAdjustment.getDegrees()) ) /  
+                                       ( math.cos(self.assumedLatitude.getDegrees()) * math.cos(distanceAdjustment.getDegrees()) ) )            
+        azimuthAdjustment_angle = Angle.Angle()
+        azimuthAdjustment_angle.setDegrees(azimuthAdjustment)
+        
+        return LHA, correctedAltitude_angle, distanceAdjustment, azimuthAdjustment_angle       
 
 class Sightings():        
     def __init__(self, root):
