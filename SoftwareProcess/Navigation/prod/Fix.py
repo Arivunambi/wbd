@@ -364,11 +364,11 @@ class Fix():
                             pass##self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
                     
                     approximateLatitude = approximateLatitude/60.0
-                    approximateLatitude_angle.setDegrees(approximateLatitude)
+                    approximateLatitude_angle.setDegrees(math.degrees(approximateLatitude))
                     
                     approximateLongitude = approximateLongitude/60.0        
                     approximateLongitude_angle = Angle.Angle()
-                    approximateLongitude_angle.setDegrees(approximateLongitude)
+                    approximateLongitude_angle.setDegrees(math.degrees(approximateLongitude))
                             
                 elif hasattr(self, 'xmlDict') :
                     raise ValueError("Fix.getSightings:  Data not set")
@@ -376,7 +376,7 @@ class Fix():
                 
                 self.log("Approximate latitude:\t%s\tApproximate longitude:\t%s"%(self.direction+approximateLatitude_angle.getString(),approximateLongitude_angle.getString()))
                 self.log("End of sighting file %s" % self.sightingFile)
-                return (approximateLatitude_angle.getString(), approximateLongitude_angle.getString())
+                return (self.direction+approximateLatitude_angle.getString(), approximateLongitude_angle.getString())
             except ValueError, Err:
                 self.log("End of sighting file %s" % self.sightingFile)
                 print traceback.format_exc()

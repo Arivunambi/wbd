@@ -1068,8 +1068,8 @@ class TestFix(unittest.TestCase):
         assumedLatitude = "N27d59.5"            
         assumedLongitude = "85d33.4"            
         approximatePosition = theFix.getSightings(assumedLatitude, assumedLongitude)            
-        #self.assertEquals(approximatePosition[0],"N29d6.8")
-        self.assertEquals(approximatePosition[1],"82d52.9")
+        self.assertEquals(approximatePosition[0],"N142d12.4")
+        self.assertEquals(approximatePosition[1],"85d00.1")
         
 #---------- 
     def test300_910_ShouldRaiseExceptionOnNotSettingSightingsFile(self):
