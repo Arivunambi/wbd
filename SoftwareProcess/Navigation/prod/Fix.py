@@ -9,7 +9,6 @@ from xml.etree.ElementTree import Element, ElementTree
 import traceback
 
 import Angle
-from Navigation.prod import Angle
 
 class TZ(tzinfo):
     def utcoffset(self, dt):
@@ -322,7 +321,7 @@ class Fix():
                 if matchResult.group(1) and matchResult.group(2):
                     self.assumedLongitude = Angle.Angle()
                     if 0<= int(matchResult.group(1)) <360 and 0<= float(matchResult.group(2)) <60.0:
-                        self.assumedLongitude.setDegreesAndMinutes(assumedLongitude[1:])
+                        self.assumedLongitude.setDegreesAndMinutes(assumedLongitude)
                     else:
                         raise ValueError("Fix.getSightings:  Invalid Lat or Long")
                 else:
@@ -352,14 +351,14 @@ class Fix():
                             gp_latitude = locatedStar["latitude"]
                             gp_longitude = self.calculateGPLongitude(GHA_aries,SHA_star)
                             LHA,correctedAltitude,distanceAdjustment,azimuthAdjustment = self.calculateAdjustment(gp_latitude,gp_longitude,sights['adjustedAltitude'])
-                            approximateLatitude += (distanceAdjustment.getDegrees() * math.cos(azimuthAdjustment.getDegrees()))
+                            approximateLatitude += (distanceAdjustment * math.cos(math.radians(azimuthAdjustment.getDegrees())))
                             
-                            approximateLongitude += (distanceAdjustment.getDegrees() * math.sin(azimuthAdjustment.getDegrees()))
+                            approximateLongitude += (distanceAdjustment * math.sin(math.radians(azimuthAdjustment.getDegrees())))
                             
                             starValidCount+=1
                             self.log("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'],sights['date'],sights['time'],sights['adjustedAltitude'], \
                                                                                gp_latitude, gp_longitude,assumedLatitude,assumedLongitude, \
-                                                                               azimuthAdjustment.getString(),int(round(distanceAdjustment.getDegrees()*60))))
+                                                                               azimuthAdjustment.getString(),distanceAdjustment))
                         else:
                             #to be removed
                             pass##self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
@@ -377,7 +376,7 @@ class Fix():
                 
                 self.log("Approximate latitude:\t%s\tApproximate longitude:\t%s"%(self.direction+approximateLatitude_angle.getString(),approximateLongitude_angle.getString()))
                 self.log("End of sighting file %s" % self.sightingFile)
-                return (approximateLatitude_angle.getDegrees(), approximateLongitude_angle.getDegrees())
+                return (approximateLatitude_angle.getString(), approximateLongitude_angle.getString())
             except ValueError, Err:
                 self.log("End of sighting file %s" % self.sightingFile)
                 print traceback.format_exc()
@@ -439,28 +438,35 @@ class Fix():
     def calculateAdjustment(self,gp_latitude,gp_longitude,adjustedAltitude):
         LHA = Angle.Angle()
         LHA.setDegreesAndMinutes(gp_longitude)
-        LHA.subtract(self.assumedLongitude)           
+        LHA.add(self.assumedLongitude)           
         
         gp_latitude_angle = Angle.Angle()
         gp_latitude_angle.setDegreesAndMinutes(gp_latitude)
         
-        correctedAltitude = math.asin(  ( math.sin(gp_latitude_angle.getDegrees()) * math.sin(self.assumedLatitude.getDegrees()) )  
-                            + ( math.cos(gp_latitude_angle.getDegrees()) * math.cos(self.assumedLatitude.getDegrees()) * math.cos(LHA.getDegrees()) )  )  
+        correctedAltitude = math.asin(  ( math.sin(math.radians(gp_latitude_angle.getDegrees())) * math.sin(math.radians(self.assumedLatitude.getDegrees())) )  
+                            + ( math.cos(math.radians(gp_latitude_angle.getDegrees())) * math.cos(math.radians(self.assumedLatitude.getDegrees())) * math.cos(math.radians(LHA.getDegrees())) )  )  
                             
         correctedAltitude_angle = Angle.Angle()
-        correctedAltitude_angle.setDegrees(correctedAltitude)
-                
+        correctedAltitude_angle.setDegrees(math.degrees(correctedAltitude))
+        
         #print adjustedAltitude, " ", correctedAltitude
-        distanceAdjustment = Angle.Angle()
+        """distanceAdjustment = Angle.Angle()
         distanceAdjustment.setDegreesAndMinutes(adjustedAltitude)
-        distanceAdjustment.subtract(correctedAltitude_angle)                                   
+        distanceAdjustment.subtract(correctedAltitude_angle)"""
+        adjustedAltitude_angle = Angle.Angle()
+        adjustedAltitude_angle.setDegreesAndMinutes(adjustedAltitude)
+        distanceAdjustment = int(math.degrees( correctedAltitude - math.radians(adjustedAltitude_angle.getDegrees()) )*60)                                   
         #distanceAdjustment = adjustedAltitude.getDegrees() - correctedAltitude
         
-        azimuthAdjustment  = math.acos(  ( math.sin(gp_latitude_angle.getDegrees()) - math.sin(self.assumedLatitude.getDegrees()) 
-                                          * math.sin(distanceAdjustment.getDegrees()) ) /  
-                                       ( math.cos(self.assumedLatitude.getDegrees()) * math.cos(distanceAdjustment.getDegrees()) ) )            
+        """azimuthAdjustment  = math.acos(  ( math.sin(math.radians(gp_latitude_angle.getDegrees())) - math.sin(math.radians(self.assumedLatitude.getDegrees())) 
+                                          * math.sin(math.radians(distanceAdjustment.getDegrees())) ) /  
+                                       ( math.cos(math.radians(self.assumedLatitude.getDegrees())) * math.cos(math.radians(distanceAdjustment.getDegrees())) )  )"""   
+        azimuthAdjustment =  math.acos(   (  math.sin(math.radians(gp_latitude_angle.getDegrees())) - math.sin(math.radians(self.assumedLatitude.getDegrees())) 
+                                            * (( math.sin(math.radians(gp_latitude_angle.getDegrees())) * math.sin(math.radians(self.assumedLatitude.getDegrees())) )  
+                                            + ( math.cos(math.radians(gp_latitude_angle.getDegrees())) * math.cos(math.radians(self.assumedLatitude.getDegrees())) 
+                                            * math.cos(math.radians(LHA.getDegrees())) ))  )/ ( math.cos(math.radians(self.assumedLatitude.getDegrees())) * math.cos(correctedAltitude) )   )                                     
         azimuthAdjustment_angle = Angle.Angle()
-        azimuthAdjustment_angle.setDegrees(azimuthAdjustment)
+        azimuthAdjustment_angle.setDegrees(math.degrees(azimuthAdjustment))
         
         return LHA, correctedAltitude_angle, distanceAdjustment, azimuthAdjustment_angle       
 
