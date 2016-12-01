@@ -294,15 +294,16 @@ class Fix():
     def getSightings(self, assumedLatitude="0d0.0", assumedLongitude="0d0.0"):
         latPattern = re.compile(r'^([NS]?)(\d+)d(\d+\.\d)$')
         longPattern = re.compile(r'^(\d+)d(\d+\.\d)$')
+        self.assumedLatitude = Angle.Angle()
         if not assumedLatitude:
             assumedLatitude = "0d0.0"
-        else:
+            self.direction=''
+        elif isinstance(assumedLatitude,str):
             assumedLatitude = self.trim(assumedLatitude)
             matchResult = re.match(latPattern,assumedLatitude)    #checks with given string
             if matchResult and matchResult.group(2) and matchResult.group(3):
                 self.direction = matchResult.group(1)
                 if matchResult.group(1) in ('N','S') and assumedLatitude not in ("N0d0.0","S0d0.0"):
-                    self.assumedLatitude = Angle.Angle()
                     if 0<= int(matchResult.group(2)) <90 and 0<= float(matchResult.group(3)) <60.0:
                         self.assumedLatitude.setDegreesAndMinutes(assumedLatitude[1:])
                         if self.direction=='S':
@@ -313,21 +314,29 @@ class Fix():
                     self.assumedLatitude.setDegreesAndMinutes(assumedLatitude)
                 else:
                     raise ValueError("Fix.getSightings:  Invalid Lat or Long")
-            
+            else:
+                raise ValueError("Fix.getSightings:  Invalid Lat or Long")
+        else:
+            raise ValueError("Fix.getSightings:  Invalid Lat or Long")
+        
+        self.assumedLongitude = Angle.Angle()    
         if not assumedLongitude:
             assumedLongitude = "0d0.0"
-        else:
+        elif isinstance(assumedLongitude,str):
             assumedLongitude = self.trim(assumedLongitude)            
             matchResult = re.match(longPattern,assumedLongitude)    #checks with given string
             if matchResult:
                 if matchResult.group(1) and matchResult.group(2):
-                    self.assumedLongitude = Angle.Angle()
                     if 0<= int(matchResult.group(1)) <360 and 0<= float(matchResult.group(2)) <60.0:
                         self.assumedLongitude.setDegreesAndMinutes(assumedLongitude)
                     else:
                         raise ValueError("Fix.getSightings:  Invalid Lat or Long")
                 else:
                     raise ValueError("Fix.getSightings:  Invalid Lat or Long")
+            else:
+                raise ValueError("Fix.getSightings:  Invalid Lat or Long")
+        else:
+            raise ValueError("Fix.getSightings:  Invalid Lat or Long")
         
         if hasattr(self, "sightingFile"):
             try:
@@ -372,10 +381,12 @@ class Fix():
                         #approximateLatitude = self.assumedLatitude.getDegrees()+approximateLatitude
                         approximateLatitude_angle.setDegrees((360+approximateLatitude)*-1)
                         self.direction='S'
-                    else:
+                    elif approximateLatitude:
                         approximateLatitude_angle.setDegrees(approximateLatitude)
                         self.direction='N'
-                    
+                    else:
+                        approximateLatitude_angle.setDegrees(approximateLatitude)
+                        
                     #approximateLongitude = self.assumedLongitude.getDegrees()+approximateLongitude        
                     #approximateLongitude_angle = Angle.Angle()
                     approximateLongitude_angle.setDegrees(approximateLongitude)

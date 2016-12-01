@@ -612,6 +612,7 @@ class TestFix(unittest.TestCase):
         theFix.setStarFile(self.starFileName)
         theFix.setAriesFile(self.ariesFileName)
         result = theFix.getSightings()
+        print result
         self.assertTupleEqual(expectedResult, result, 
                               "Minor:  incorrect return value from getSightings")
         
@@ -1120,6 +1121,17 @@ class TestFix(unittest.TestCase):
         self.assertEquals(expectedDiag, context.exception.args[0][0:len(expectedDiag)],
                           "Major:  failure to set aries file before getSightings()")   
       
+    def test300_931_ShouldRaiseExceptionOnNotSettingSightingsFile(self):
+        'Raise exception on failure to set sighting file'
+        expectedDiag = self.className + "getSightings:"
+        theFix = F.Fix()
+        theFix.setSightingFile("sightingFileCA051.xml")
+        theFix.setAriesFile(self.ariesFileName)   
+        theFix.setStarFile(self.starFileName)
+        with self.assertRaises(ValueError) as context:
+            theFix.getSightings(123)
+        self.assertEquals(expectedDiag, context.exception.args[0][0:len(expectedDiag)],
+                          "Major:  failure to set sighting file before getSightings()")
 
 #  helper methods
     def indexInList(self, target, searchList):
