@@ -1062,14 +1062,25 @@ class TestFix(unittest.TestCase):
     
     def test300_111_ShouldLogStarLatLonWithInterpolation(self): 
         theFix = F.Fix()            
+        sightingFilePath = theFix.setSightingFile("sightingFileCA052.xml")            
+        starFilePath = theFix.setStarFile("stars.txt")            
+        ariesFilePath = theFix.setAriesFile("aries.txt")            
+        assumedLatitude = "S53d38.4"#"N27d59.5"            
+        assumedLongitude = "74d35.3"#"85d33.4"            
+        approximatePosition = theFix.getSightings(assumedLatitude, assumedLongitude)            
+        self.assertEquals(approximatePosition[0],"S13d28.0")
+        self.assertEquals(approximatePosition[1],"101d42.2")
+    
+    def test300_112_ShouldLogStarLatLonWithInterpolation(self): 
+        theFix = F.Fix()            
         sightingFilePath = theFix.setSightingFile("sightingFileCA051.xml")            
         starFilePath = theFix.setStarFile("stars.txt")            
         ariesFilePath = theFix.setAriesFile("aries.txt")            
         assumedLatitude = "N27d59.5"            
         assumedLongitude = "85d33.4"            
         approximatePosition = theFix.getSightings(assumedLatitude, assumedLongitude)            
-        self.assertEquals(approximatePosition[0],"N142d12.4")
-        self.assertEquals(approximatePosition[1],"85d00.1")
+        self.assertEquals(approximatePosition[0],"S20d15.5")
+        self.assertEquals(approximatePosition[1],"79d19.9")
         
 #---------- 
     def test300_910_ShouldRaiseExceptionOnNotSettingSightingsFile(self):

@@ -24,7 +24,10 @@ class Angle():
                     try:
                         deg = float(matchResult.group(1))    #group before character 'd'
                         minutes = float(matchResult.group(2))    ##group after character 'd'
-                        self.angle = self.checkModulo(deg) + (minutes/60.0)
+                        if deg>=0:
+                            self.angle = self.checkModulo(deg) + (minutes/60.0)
+                        else:
+                            self.angle = self.checkModulo(deg) - (minutes/60.0)
                         return self.angle#round(self.angle,1)
                     except:
                         raise ValueError("Angle.setDegreesAndMinutes:  Value should be in xdy.y format")

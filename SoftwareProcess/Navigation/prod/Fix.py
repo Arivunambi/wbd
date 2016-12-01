@@ -305,6 +305,8 @@ class Fix():
                     self.assumedLatitude = Angle.Angle()
                     if 0<= int(matchResult.group(2)) <90 and 0<= float(matchResult.group(3)) <60.0:
                         self.assumedLatitude.setDegreesAndMinutes(assumedLatitude[1:])
+                        if self.direction=='S':
+                            self.assumedLatitude.setDegrees(self.assumedLatitude.getDegrees()*-1)
                     else:
                         raise ValueError("Fix.getSightings:  Invalid Lat or Long")
                 elif not matchResult.group(1) and assumedLatitude=="0d0.0":
@@ -335,7 +337,10 @@ class Fix():
                 latitude, longitude = self.getPosition()
                 approximateLatitude_angle = Angle.Angle()
                 approximateLongitude_angle = Angle.Angle()
-                approximateLatitude = self.assumedLatitude.getDegrees()
+                if self.direction=='S':
+                    approximateLatitude = self.assumedLatitude.getDegrees()-360
+                else:
+                    approximateLatitude = self.assumedLatitude.getDegrees()
                 approximateLongitude = self.assumedLongitude.getDegrees()
                 if hasattr(self, 'xmlDict') and hasattr(self, "ariesFile") and hasattr(self, "starFile"):
                     #print "Aries file :", self.ariesFile
@@ -351,9 +356,9 @@ class Fix():
                             gp_latitude = locatedStar["latitude"]
                             gp_longitude = self.calculateGPLongitude(GHA_aries,SHA_star)
                             LHA,correctedAltitude,distanceAdjustment,azimuthAdjustment = self.calculateAdjustment(gp_latitude,gp_longitude,sights['adjustedAltitude'])
-                            approximateLatitude += (distanceAdjustment * math.cos(math.radians(azimuthAdjustment.getDegrees())))
+                            approximateLatitude += (distanceAdjustment * math.cos(math.radians(azimuthAdjustment.getDegrees())))/60.0
                             
-                            approximateLongitude += (distanceAdjustment * math.sin(math.radians(azimuthAdjustment.getDegrees())))
+                            approximateLongitude += (distanceAdjustment * math.sin(math.radians(azimuthAdjustment.getDegrees())))/60.0
                             
                             starValidCount+=1
                             self.log("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'],sights['date'],sights['time'],sights['adjustedAltitude'], \
@@ -363,12 +368,17 @@ class Fix():
                             #to be removed
                             pass##self.log("%s\t%s\t%s\t%s\t%s\t%s"%(sights['body'], sights['date'], sights['time'], sights['adjustedAltitude'], gp_latitude, gp_longitude))
                     
-                    approximateLatitude = approximateLatitude/60.0
-                    approximateLatitude_angle.setDegrees(math.degrees(approximateLatitude))
+                    if approximateLatitude<0:
+                        #approximateLatitude = self.assumedLatitude.getDegrees()+approximateLatitude
+                        approximateLatitude_angle.setDegrees((360+approximateLatitude)*-1)
+                        self.direction='S'
+                    else:
+                        approximateLatitude_angle.setDegrees(approximateLatitude)
+                        self.direction='N'
                     
-                    approximateLongitude = approximateLongitude/60.0        
-                    approximateLongitude_angle = Angle.Angle()
-                    approximateLongitude_angle.setDegrees(math.degrees(approximateLongitude))
+                    #approximateLongitude = self.assumedLongitude.getDegrees()+approximateLongitude        
+                    #approximateLongitude_angle = Angle.Angle()
+                    approximateLongitude_angle.setDegrees(approximateLongitude)
                             
                 elif hasattr(self, 'xmlDict') :
                     raise ValueError("Fix.getSightings:  Data not set")
@@ -379,7 +389,7 @@ class Fix():
                 return (self.direction+approximateLatitude_angle.getString(), approximateLongitude_angle.getString())
             except ValueError, Err:
                 self.log("End of sighting file %s" % self.sightingFile)
-                print traceback.format_exc()
+                #print traceback.format_exc()
                 raise ValueError("Fix.getSightings:  Invalid sightingData")
         else:
             raise ValueError("Fix.getSightings:  sightingFile cannot be empty")
@@ -455,7 +465,7 @@ class Fix():
         distanceAdjustment.subtract(correctedAltitude_angle)"""
         adjustedAltitude_angle = Angle.Angle()
         adjustedAltitude_angle.setDegreesAndMinutes(adjustedAltitude)
-        distanceAdjustment = int(math.degrees( correctedAltitude - math.radians(adjustedAltitude_angle.getDegrees()) )*60)                                   
+        distanceAdjustment = int(round(math.degrees( correctedAltitude - math.radians(adjustedAltitude_angle.getDegrees()) )*60))                                   
         #distanceAdjustment = adjustedAltitude.getDegrees() - correctedAltitude
         
         """azimuthAdjustment  = math.acos(  ( math.sin(math.radians(gp_latitude_angle.getDegrees())) - math.sin(math.radians(self.assumedLatitude.getDegrees())) 
