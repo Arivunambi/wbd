@@ -294,10 +294,11 @@ class Fix():
     def getSightings(self, assumedLatitude="0d0.0", assumedLongitude="0d0.0"):
         latPattern = re.compile(r'^([NS]?)(\d+)d(\d+\.\d)$')
         longPattern = re.compile(r'^(\d+)d(\d+\.\d)$')
+        self.direction=''
         self.assumedLatitude = Angle.Angle()
         if not assumedLatitude:
-            assumedLatitude = "0d0.0"
-            self.direction=''
+            #assumedLatitude = "0d0.0" 
+            raise ValueError("Fix.getSightings:  Invalid Lat or Long")
         elif isinstance(assumedLatitude,str):
             assumedLatitude = self.trim(assumedLatitude)
             matchResult = re.match(latPattern,assumedLatitude)    #checks with given string
@@ -322,6 +323,7 @@ class Fix():
         self.assumedLongitude = Angle.Angle()    
         if not assumedLongitude:
             assumedLongitude = "0d0.0"
+            raise ValueError("Fix.getSightings:  Invalid Lat or Long")
         elif isinstance(assumedLongitude,str):
             assumedLongitude = self.trim(assumedLongitude)            
             matchResult = re.match(longPattern,assumedLongitude)    #checks with given string
@@ -476,7 +478,8 @@ class Fix():
         distanceAdjustment.subtract(correctedAltitude_angle)"""
         adjustedAltitude_angle = Angle.Angle()
         adjustedAltitude_angle.setDegreesAndMinutes(adjustedAltitude)
-        distanceAdjustment = int(round(math.degrees( correctedAltitude - math.radians(adjustedAltitude_angle.getDegrees()) )*60))                                   
+        distanceAdjustment = int(round(math.degrees( correctedAltitude - math.radians(adjustedAltitude_angle.getDegrees()) )*60))  
+        
         #distanceAdjustment = adjustedAltitude.getDegrees() - correctedAltitude
         
         """azimuthAdjustment  = math.acos(  ( math.sin(math.radians(gp_latitude_angle.getDegrees())) - math.sin(math.radians(self.assumedLatitude.getDegrees())) 

@@ -612,7 +612,6 @@ class TestFix(unittest.TestCase):
         theFix.setStarFile(self.starFileName)
         theFix.setAriesFile(self.ariesFileName)
         result = theFix.getSightings()
-        print result
         self.assertTupleEqual(expectedResult, result, 
                               "Minor:  incorrect return value from getSightings")
         
@@ -1082,6 +1081,17 @@ class TestFix(unittest.TestCase):
         approximatePosition = theFix.getSightings(assumedLatitude, assumedLongitude)            
         self.assertEquals(approximatePosition[0],"S20d15.5")
         self.assertEquals(approximatePosition[1],"79d19.9")
+    
+    def test300_113_ShouldLogStarLatLonWithInterpolation(self): 
+        theFix = F.Fix()            
+        sightingFilePath = theFix.setSightingFile("sightingFileCA051.xml")            
+        starFilePath = theFix.setStarFile("stars.txt")            
+        ariesFilePath = theFix.setAriesFile("aries.txt")            
+        assumedLatitude = "N27d59.5"            
+        assumedLongitude = "85d33.4"            
+        approximatePosition = theFix.getSightings()            
+        self.assertEquals(approximatePosition[0],"S6d01.6")
+        self.assertEquals(approximatePosition[1],"348d40.2")
         
 #---------- 
     def test300_910_ShouldRaiseExceptionOnNotSettingSightingsFile(self):
@@ -1121,7 +1131,19 @@ class TestFix(unittest.TestCase):
         self.assertEquals(expectedDiag, context.exception.args[0][0:len(expectedDiag)],
                           "Major:  failure to set aries file before getSightings()")   
       
-    def test300_931_ShouldRaiseExceptionOnNotSettingSightingsFile(self):
+    def test300_931_ShouldRaiseExceptionOnInvalidParameters(self):
+        'Raise exception on failure to set sighting file'
+        expectedDiag = self.className + "getSightings:"
+        theFix = F.Fix()
+        theFix.setSightingFile("sightingFileCA051.xml")
+        theFix.setAriesFile(self.ariesFileName)   
+        theFix.setStarFile(self.starFileName)
+        with self.assertRaises(ValueError) as context:
+            theFix.getSightings("")
+        self.assertEquals(expectedDiag, context.exception.args[0][0:len(expectedDiag)],
+                          "Major:  failure to set sighting file before getSightings()")
+    
+    def test300_932_ShouldRaiseExceptionOnInvalidParameters(self):
         'Raise exception on failure to set sighting file'
         expectedDiag = self.className + "getSightings:"
         theFix = F.Fix()
